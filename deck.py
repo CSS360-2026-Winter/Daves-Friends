@@ -77,3 +77,13 @@ def can_play_card(top: Card, playing: Card) -> bool:
             
     return False
     
+def draw_valid_start_card(deck: Deck) -> Card:
+    """Draw a valid starting card (not Wild or DrawFourWild). """
+    while True:
+        if len(deck.cards) == 0:
+            raise RuntimeError("Deck is empty; cannot draw a starting card. ")
+            
+        card = deck.cards.pop()
+        
+        if not isinstance(card, (Wild, DrawFourWild)):
+            return card

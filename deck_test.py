@@ -38,6 +38,14 @@ class TestValidCards(unittest.TestCase):
 		self.assertTrue(can_play_card(Number(Color.BLUE, 10), Number(Color.BLUE, 5)))
 		self.assertFalse(can_play_card(Number(Color.BLUE, 10), Number(Color.RED, 5)))
 	
-    
+	def test_draw_valid_start_card(self):
+    		deck = Deck()
+    		deck.add_default_cards()
+
+    		card = draw_valid_start_card(deck)
+
+    		self.assertFalse(isinstance(card, (Wild, DrawFourWild)))
+
 if __name__ == '__main__':
     unittest.main()
+
