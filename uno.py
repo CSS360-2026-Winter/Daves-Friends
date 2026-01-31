@@ -20,6 +20,10 @@ def render_status() -> str:
     # text shown in the public game message
     return f"UNO Game Status\nTurn: {turn}"
 
+@bot.tree.command(name="uno", description="Announce that a player has 1 card left.")
+async def uno(interaction: discord.Interaction) -> None:
+    await interaction.response.send_message(f"UNO! {interaction.user.mention} has 1 card left.")
+
 @bot.command()
 async def ping(ctx: commands.Context[commands.Bot], arg: str = ""):
     await ctx.send(f"pong {arg}")
