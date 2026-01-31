@@ -70,3 +70,10 @@ pip install -r requirements.txt
 ```bash
 DISCORD_TOKEN=your_token_here
 ```
+
+### 5) Guild ID (Optional)
+For faster slash command updates during development, add this to your .env:
+```bash
+GUILD_ID=your_server_id
+```
+This syncs commands instantly to that server. If not set, commands sync globally and may take longer to appear.

@@ -7,26 +7,37 @@ from dotenv import load_dotenv
 load_dotenv()
 
 intents = discord.Intents.default()
+# message_content not needed for slash commands, but harmless:
 intents.message_content = True
 
-bot = commands.Bot(command_prefix='/', intents=intents)
+bot = commands.Bot(command_prefix="/", intents=intents)
 
-# keeps track of the one public game message
-status_message: discord.Message | None = None
-# simple counter to show the game is updating
-turn: int = 0
 
-def render_status() -> str:
-    # text shown in the public game message
-    return f"UNO Game Status\nTurn: {turn}"
+@bot.tree.command(name="ping", description="Replies with pong.")
+async def ping(interaction: discord.Interaction, text: str | None = None) -> None:
+    msg = "pong" if not text else f"pong {text}"
+    await interaction.response.send_message(msg)
 
-@bot.tree.command(name="uno", description="Announce that a player has 1 card left.")
-async def uno(interaction: discord.Interaction) -> None:
-    await interaction.response.send_message(f"UNO! {interaction.user.mention} has 1 card left.")
 
-@bot.command()
-async def ping(ctx: commands.Context[commands.Bot], arg: str = ""):
-    await ctx.send(f"pong {arg}")
+@bot.event
+async def on_ready() -> None:
+    # Load lobby commands from lobby.py (extension style: async def setup(bot))
+
+    ext = "controllers.lobby"
+    if ext not in bot.extensions:
+        await bot.load_extension(ext)
+
+    # Fast sync: set GUILD_ID in .env to sync instantly in that server
+    guild_id = os.getenv("GUILD_ID")
+    if guild_id:
+        guild = discord.Object(id=int(guild_id))
+        await bot.tree.sync(guild=guild)
+        print(f"Synced commands to guild {guild_id} as {bot.user}")
+    else:
+        # Global sync can take a while to propagate
+        await bot.tree.sync()
+        print(f"Synced commands globally as {bot.user}")
+
 
 @bot.command()
 async def start(ctx: commands.Context[commands.Bot]):
@@ -48,7 +59,7 @@ async def next(ctx: commands.Context[commands.Bot]):
     await status_message.edit(content=render_status())
 
 token = os.getenv("DISCORD_TOKEN")
-if token is None:
-    raise RuntimeError("DISCORD_TOKEN is not set in .env")
+if not token:
+    raise RuntimeError("DISCORD_TOKEN is not set. Check your .env file.")
 
 bot.run(token)

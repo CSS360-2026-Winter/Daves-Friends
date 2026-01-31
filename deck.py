@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
+from random import shuffle
 
 class Color(Enum):
-    RED = 0
-    YELLOW = 1
-    BLUE = 2
-    GREEN = 3
+    RED = auto()
+    YELLOW = auto()
+    BLUE = auto()
+    GREEN = auto()
     
 class Deck:
     cards = []
@@ -33,6 +34,8 @@ class Deck:
         for i in range(0, 4):
             self.cards.append(Wild())
             self.cards.append(DrawFourWild())
+
+        shuffle(self.cards)
             
     
 @dataclass
