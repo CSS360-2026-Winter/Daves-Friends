@@ -67,5 +67,5 @@ class LobbyUI(Interactions):
             return
 
         embed = self.lobby_views.update_embed("Game Disbanded",
-                                              "The host disbanded the game, so the lobby was deleted.")
+                                              "The host disbanded the game, so the lobby was deleted!")
         await interaction.response.send_message(embeds=[embed])
