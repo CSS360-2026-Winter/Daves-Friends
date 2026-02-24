@@ -101,9 +101,28 @@ def can_play_card(top: Card, playing: Card) -> bool:
         case Skip(c) | Reverse(c) | DrawTwo(c):
             return c == top.color
         case Number(c, n):
-            try:
+            if isinstance(top, Number):
                 return c == top.color or n == top.number
-            except AttributeError:
-                return c == top.color
+            return c == top.color
 
     return False
+
+def format_card(card: Card | None) -> str:
+    if card is None:
+        return "(none)"
+
+    match card:
+        case Number(color, number):
+            return f"{COLOR_EMOJIS[color]} {NUMBER_EMOJIS[number]}"
+        case Skip(color):
+            return f"{COLOR_EMOJIS[color]} ⏭️ SKIP"
+        case Reverse(color):
+            return f"{COLOR_EMOJIS[color]} 🔄 REVERSE"
+        case DrawTwo(color):
+            return f"{COLOR_EMOJIS[color]} ➕2 DRAW 2"
+        case DrawFourWild(color):
+            return f"🌈 ➕4 DRAW 4"
+        case Wild(color):
+            return f"🌈 WILD"
+        case _:
+            return str(card)

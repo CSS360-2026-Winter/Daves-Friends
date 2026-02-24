@@ -21,7 +21,7 @@ class Renderer:
         self.end_views = end_views
         self.lobby_service = lobby_service
 
-    async def render(self, lobby: Lobby) -> (list[discord.Embed], Interactions):
+    async def render(self, lobby: Lobby) -> tuple[list[discord.Embed], Interactions]:
         if lobby.game.phase() == Phase.LOBBY:
             embed = self.lobby_views.lobby_embed(lobby)
             views = LobbyUI(self, self.lobby_service, self.lobby_views)
@@ -29,7 +29,7 @@ class Renderer:
             return [embed], views
         elif lobby.game.phase() == Phase.PLAYING:
             embed = self.game_views.game_embed(lobby)
-            views = GameUI()
+            views = GameUI(lobby)
 
             return [embed], views
         elif lobby.game.phase() == Phase.FINISHED:
@@ -46,6 +46,7 @@ class Renderer:
         if not interaction.response.is_done():
             await interaction.response.edit_message(embeds=embeds, view=view)
         else:
+            assert interaction.message is not None
             await interaction.message.edit(embeds=embeds, view=view)
 
     async def update_by_message_id(self, bot: discord.Client, channel_id: int, message_id: int, lobby: Lobby):
