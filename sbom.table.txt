@@ -1,0 +1,27 @@
+NAME               VERSION   TYPE                      
+Simple Launcher    1.1.0.14  binary  (+11 duplicates)  
+aiohappyeyeballs   2.6.1     python  (+2 duplicates)   
+aiohttp            3.13.3    python  (+2 duplicates)   
+aiosignal          1.4.0     python  (+2 duplicates)   
+attrs              25.4.0    python  (+2 duplicates)   
+audioop-lts        0.2.2     python                    
+discord            2.3.2     python  (+2 duplicates)   
+discord-py         2.6.4     python  (+2 duplicates)   
+dotenv             0.9.9     python  (+2 duplicates)   
+frozenlist         1.8.0     python  (+2 duplicates)   
+idna               3.11      python  (+2 duplicates)   
+iniconfig          2.3.0     python  (+1 duplicate)    
+libopus-0.x64      UNKNOWN   binary  (+1 duplicate)    
+libopus-0.x86      UNKNOWN   binary  (+1 duplicate)    
+multidict          6.7.0     python                    
+multidict          6.7.1     python  (+1 duplicate)    
+packaging          26.0      python  (+1 duplicate)    
+pip                25.3      python  (+1 duplicate)    
+pipdeptree         2.31.0    python                    
+pluggy             1.6.0     python  (+1 duplicate)    
+propcache          0.4.1     python  (+2 duplicates)   
+pygments           2.19.2    python  (+1 duplicate)    
+pytest             9.0.2     python  (+1 duplicate)    
+python-dotenv      1.2.1     python  (+2 duplicates)   
+typing-extensions  4.15.0    python  (+1 duplicate)    
+yarl               1.22.0    python  (+2 duplicates)
