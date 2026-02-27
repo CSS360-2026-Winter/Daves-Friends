@@ -44,7 +44,7 @@ class GameUI(Interactions):
             embed = self._renderer.lobby_views.error_embed(
                 "Game Error" if e.title == "" else e.title, str(e)
             )
-            await interaction.response.send_message(embeds=[embed], ephemeral=e.private)
+            await interaction.followup.send(embeds=[embed], ephemeral=e.private)
             return
 
         await self._renderer.update_from_interaction(interaction, self.lobby)
@@ -143,3 +143,6 @@ class GameUI(Interactions):
         await interaction.response.send_message("🛑 Game ended.", ephemeral=True)
 
 
+        cog = interaction.client.get_cog("UnoCog")
+        if cog is not None:
+            await cog.dm_current_player_turn(self.lobby, interaction.channel_id)

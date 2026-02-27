@@ -115,6 +115,7 @@ class UnoCog(commands.Cog):
             return
 
         await self._renderer.update_by_message_id(self.bot, cid, main_msg_id, lobby)
+        await self.dm_current_player_turn(lobby, cid)
         await interaction.response.send_message(
             "Successfully played card!", ephemeral=True
         )
@@ -130,6 +131,36 @@ class UnoCog(commands.Cog):
         )
 
         await user.send(embed=embed)
+
+    async def dm_current_player_turn(self, lobby, channel_id: int) -> None:
+        """
+        DMs the current player when it becomes their turn, including a link to the game.
+        """
+        game = lobby.game
+        if game.phase().name != "PLAYING":
+            return
+
+        current = game.current_player()
+        if game.is_bot(current):
+            return
+
+        if not getattr(lobby, "main_message", None):
+            return
+
+        channel = self.bot.get_channel(channel_id)
+        if channel is None or channel.guild is None:
+            return
+
+        link = (
+            f"https://discord.com/channels/"
+            f"{channel.guild.id}/{channel_id}/{lobby.main_message}"
+        )
+
+        try:
+            user = await self.bot.fetch_user(current)
+            await user.send(f"🎮 It's your turn!\nLink to Game: {link}")
+        except discord.Forbidden:
+            pass
 
     async def run_afk_timer(
         self, channel_id: int, player_id: int, start_turn_count: int
@@ -161,8 +192,7 @@ class UnoCog(commands.Cog):
                         f" <@{player_id}> was AFK. They drew a card and was skipped."
                     )
 
-                    embeds, view, files = await self._renderer.render(lobby)
-                    await channel.send(embeds=embeds, view=view, files=files)
+                    await self._renderer.update_by_message_id(self.bot, channel_id, lobby.main_message, lobby)
 
                     asyncio.create_task(
                         self.run_afk_timer(
