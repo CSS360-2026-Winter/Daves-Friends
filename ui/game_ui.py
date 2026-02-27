@@ -115,3 +115,31 @@ class GameUI(Interactions):
             return
 
         await self._renderer.update_from_interaction(interaction, self.lobby)
+
+            @discord.ui.button(label="🛑 End Game", style=discord.ButtonStyle.danger)
+    async def end_game(
+        self, interaction: discord.Interaction, _button: discord.ui.Button
+    ) -> None:
+        """
+        Ends the current game (host-only).
+        """
+        # host-only
+        if interaction.user.id != self.lobby.user.id:
+            await interaction.response.send_message(
+                "Only the host can end the game.", ephemeral=True
+            )
+            return
+
+        try:
+            self.game_service.end_game(interaction.channel_id)
+        except GameError as e:
+            embed = self._renderer.lobby_views.error_embed(
+                "Game Error" if e.title == "" else e.title, str(e)
+            )
+            await interaction.response.send_message(embeds=[embed], ephemeral=e.private)
+            return
+
+        await self._renderer.update_from_interaction(interaction, self.lobby)
+        await interaction.response.send_message("🛑 Game ended.", ephemeral=True)
+
+
