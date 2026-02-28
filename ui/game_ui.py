@@ -33,10 +33,39 @@ class GameUI(Interactions):
         self, interaction: discord.Interaction, _button: discord.ui.Button
     ) -> None:
         """
-        Calls Uno, declaring a player has only one card left in their hand.
+        Calls Uno, protecting the caller if vulnerable or catching another player who
+        failed to call it.
         """
+        await interaction.response.defer(ephemeral=True)
 
-        await interaction.response.send_message("this command is a work in progress")
+        try:
+            result = self.game_service.call_uno(interaction.channel_id, interaction.user.id)
+        except GameError as e:
+            embed = self._renderer.lobby_views.error_embed(
+                "Game Error" if e.title == "" else e.title, str(e)
+            )
+            await interaction.followup.send(embeds=[embed], ephemeral=e.private)
+            return
+
+        await self._renderer.update_from_interaction(interaction, self.lobby)
+
+        match result["result"]:
+            case "safe":
+                target = result["target"]
+                await interaction.followup.send(f"🟩 <@{target}> called **UNO!**", ephemeral=False)
+            case "too_early":
+                await interaction.followup.send("Too early! Grace period is still active.",
+                                                ephemeral=True)
+            case "penalty":
+                target = result["target"]
+                caller = result["caller"]
+                await interaction.followup.send(
+                    f"🚨 <@{target}> got caught by <@{caller}> "
+                    "and draws **+2** cards!", ephemeral=False)
+            case "no_target":
+                await interaction.followup.send("No one is currently at UNO.", ephemeral=True)
+            case _:
+                await interaction.followup.send("Unhandled UNO result.", ephemeral=True)
 
     @discord.ui.button(label="👀 View Cards", style=discord.ButtonStyle.blurple)
     async def view_cards(
@@ -86,3 +115,7 @@ class GameUI(Interactions):
             return
 
         await self._renderer.update_from_interaction(interaction, self.lobby)
+
+        cog = interaction.client.get_cog("UnoCog")
+        if cog is not None:
+            await cog.dm_current_player_turn(self.lobby, interaction.channel_id)

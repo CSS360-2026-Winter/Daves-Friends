@@ -53,7 +53,7 @@ class BaseViews:
         """
         return random.choice(self._cool_gifs)
 
-    def update_embed(self, title: str, desc: str) -> discord.Embed:
+    def update_embed(self, title: str, desc: str, gif=True) -> discord.Embed:
         """
         Provides the framework for a Discord embed that displays an update.
         """
@@ -61,15 +61,15 @@ class BaseViews:
             "UPDATE: " + title,
             desc=desc,
             color=self.get_random_color(),
-            gif=True,
+            gif=gif,
             time_stamp=True,
         )
 
-    def error_embed(self, title: str, desc: str) -> discord.Embed:
+    def error_embed(self, title: str, desc: str, gif=True) -> discord.Embed:
         """
         Provides the framework for a Discord embed that displays an error.
         """
-        return self._build_embed("ERROR: " + title, desc, self._error_color, True)
+        return self._build_embed("ERROR: " + title, desc, self._error_color, gif)
 
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-positional-arguments
@@ -104,6 +104,6 @@ class BaseViews:
             embed.set_image(url=self.get_random_gif())
 
         if author:
-            embed.set_author(name=author.name, icon_url=author.avatar.url)
+            embed.set_author(name=author.name, icon_url=author.display_avatar.url)
 
         return embed

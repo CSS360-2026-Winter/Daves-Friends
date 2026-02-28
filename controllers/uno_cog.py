@@ -26,25 +26,14 @@ class UnoCog(commands.Cog):
     """
 
     def __init__(self, bot: commands.Bot):
-        # Bot
         self.bot = bot
-
-        # Repos
         self.lobby_repo = LobbyRepository()
-
-        # Services
         self.lobby_service = LobbyService(self.lobby_repo)
         self.game_service = GameService(self.lobby_service)
-
-        # Initialize renderer
         self._renderer = Renderer(self.lobby_service, self.game_service)
 
     @app_commands.command(name="create", description="Create a lobby in this channel.")
     async def create(self, interaction: discord.Interaction) -> None:
-        """
-        Creates a new lobby.
-        """
-
         cid = require_channel_id(interaction)
 
         try:
@@ -54,7 +43,6 @@ class UnoCog(commands.Cog):
                 "Lobby Exists" if e.title == "" else e.title, str(e)
             )
             await interaction.response.send_message(embeds=[embed], ephemeral=e.private)
-
             return
 
         embeds, view, files = await self._renderer.render(lobby)
@@ -84,10 +72,6 @@ class UnoCog(commands.Cog):
         card_index: int | None = None,
         color: app_commands.Choice[str] | None = None,
     ) -> None:
-        """
-        Plays a card by index, choosing a color if it's a wild.
-        """
-
         cid = require_channel_id(interaction)
         lobby = self.lobby_service.get_lobby(cid)
         main_msg_id = lobby.main_message
@@ -111,102 +95,113 @@ class UnoCog(commands.Cog):
                 "Lobby Exists" if e.title == "" else e.title, str(e)
             )
             await interaction.response.send_message(embeds=[embed], ephemeral=e.private)
-
             return
 
         await self._renderer.update_by_message_id(self.bot, cid, main_msg_id, lobby)
-        await interaction.response.send_message(
-            "Successfully played card!", ephemeral=True
-        )
+        await self.dm_current_player_turn(lobby, cid)
+        await interaction.response.send_message("Successfully played card!", ephemeral=True)
 
         bot = interaction.client
-        guild = interaction.guild.id
+        guild_id = interaction.guild.id if interaction.guild else None
         user = await bot.fetch_user(interaction.user.id)
         hand = lobby.game.hand(interaction.user.id)
+
+        link = ""
+        if guild_id is not None:
+            link = f"\nLink to Game: https://discord.com/channels/{guild_id}/{cid}/{lobby.main_message}"
+
         embed = self._renderer.hand_views.hand_embed(
             hand,
-            optional_message=f"""This is your new hand after your latest action.
-            Link to Game: https://discord.com/channels/{guild}/{cid}/{lobby.main_message}""",
+            optional_message=f"This is your new hand after your latest action.{link}",
         )
-
         await user.send(embed=embed)
 
-  async def run_afk_timer(
-    self, channel_id: int, player_id: int, start_turn_count: int
-):
-    """
-    Skips a player's turn if they don't play in 60 seconds.
-    """
-
-    import time
-
-    try:
-        lobby = self.lobby_service.get_lobby(channel_id)
-    except GameError:
-        return
-
-    # Only run if game is playing
-    if lobby.game.phase().name != "PLAYING":
-        return
-
-    # Set 60 second deadline
-    lobby.game.state["afk_deadline"] = time.time() + 60
-
-    # Countdown loop
-    for _ in range(60):
-        await asyncio.sleep(1)
-
-        lobby = self.lobby_service.get_lobby(channel_id)
-
-        # Stop if turn changed
-        if (
-            lobby.game.current_player() != player_id
-            or lobby.game.state["turn_count"] != start_turn_count
-        ):
-            lobby.game.state.pop("afk_deadline", None)
+    async def dm_current_player_turn(self, lobby, channel_id: int) -> None:
+        game = lobby.game
+        if game.phase().name != "PLAYING":
             return
 
-        # Update the embed every second
-        await self._renderer.update_from_channel(channel_id, lobby)
+        current = game.current_player()
+        if game.is_bot(current):
+            return
 
-    # Time expired → draw and pass
-    try:
-        lobby = self.lobby_service.get_lobby(channel_id)
-        game = lobby.game
+        if not getattr(lobby, "main_message", None):
+            return
 
-        if (
-            game.current_player() == player_id
-            and game.state["turn_count"] == start_turn_count
-        ):
-            game.draw_and_pass(player_id)
+        channel = self.bot.get_channel(channel_id)
+        if channel is None or channel.guild is None:
+            return
 
-            channel = self.bot.get_channel(channel_id)
-            if channel:
-                await channel.send(
-                    f"<@{player_id}> was AFK. They drew a card and were skipped."
+        link = f"https://discord.com/channels/{channel.guild.id}/{channel_id}/{lobby.main_message}"
+
+        try:
+            user = await self.bot.fetch_user(current)
+            await user.send(f"🎮 It's your turn!\nLink to Game: {link}")
+        except discord.Forbidden:
+            pass
+
+    async def run_afk_timer(self, channel_id: int, player_id: int, start_turn_count: int) -> None:
+        import time
+
+        try:
+            lobby = self.lobby_service.get_lobby(channel_id)
+        except GameError:
+            return
+
+        if lobby.game.phase().name != "PLAYING":
+            return
+
+        lobby.game.state["afk_deadline"] = time.time() + 60
+
+        for _ in range(60):
+            await asyncio.sleep(1)
+
+            lobby = self.lobby_service.get_lobby(channel_id)
+
+            if (
+                lobby.game.current_player() != player_id
+                or lobby.game.state["turn_count"] != start_turn_count
+            ):
+                lobby.game.state.pop("afk_deadline", None)
+                return
+
+            await self._renderer.update_from_channel(channel_id, lobby)
+
+        try:
+            lobby = self.lobby_service.get_lobby(channel_id)
+            game = lobby.game
+
+            if (
+                game.current_player() == player_id
+                and game.state["turn_count"] == start_turn_count
+            ):
+                game.draw_and_pass(player_id)
+
+                channel = self.bot.get_channel(channel_id)
+                if channel:
+                    await channel.send(
+                        f"<@{player_id}> was AFK. They drew a card and were skipped."
+                    )
+
+                    await self._renderer.update_by_message_id(
+                        self.bot,
+                        channel_id,
+                        lobby.main_message,
+                        lobby,
+                    )
+
+                asyncio.create_task(
+                    self.run_afk_timer(
+                        channel_id,
+                        game.current_player(),
+                        game.state["turn_count"],
+                    )
                 )
-
-                await self._renderer.update_from_channel(channel_id, lobby)
-
-            # Start timer for next player
-            asyncio.create_task(
-                self.run_afk_timer(
-                    channel_id,
-                    game.current_player(),
-                    game.state["turn_count"],
-                )
-            )
-
-    except GameError as e:
-        print(f"AFK Timer Error: {e}")
-
-    finally:
-        lobby.game.state.pop("afk_deadline", None)
+        except GameError as e:
+            print(f"AFK Timer Error: {e}")
+        finally:
+            lobby.game.state.pop("afk_deadline", None)
 
 
 async def setup(bot: commands.Bot) -> None:
-    """
-    Adds a new instance of UnoCog to the bot.
-    """
-
     await bot.add_cog(UnoCog(bot))
