@@ -31,6 +31,8 @@ class UnoCog(commands.Cog):
         self.lobby_service = LobbyService(self.lobby_repo)
         self.game_service = GameService(self.lobby_service)
         self._renderer = Renderer(self.lobby_service, self.game_service)
+        
+        self._afk_tasks = {}
 
     @app_commands.command(name="create", description="Create a lobby in this channel.")
     async def create(self, interaction: discord.Interaction) -> None:
@@ -99,6 +101,20 @@ class UnoCog(commands.Cog):
 
         await self._renderer.update_by_message_id(self.bot, cid, main_msg_id, lobby)
         await self.dm_current_player_turn(lobby, cid)
+        old = self._afk_tasks.get(cid)
+if old and not old.done():
+    old.cancel()
+
+
+
+        self._afk_tasks[cid] = asyncio.create_task(
+    self.run_afk_timer(
+        cid,
+        lobby.game.current_player(),
+        lobby.game.state["turn_count"],
+    )
+)
+)
         await interaction.response.send_message("Successfully played card!", ephemeral=True)
 
         bot = interaction.client
