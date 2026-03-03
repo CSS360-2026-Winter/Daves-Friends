@@ -5,6 +5,7 @@ Provides classes and functions related to the operation of a game.
 # pylint: disable=missing-class-docstring
 # pylint: disable=missing-function-docstring
 
+import os
 import random
 import time
 from datetime import datetime, timedelta, timezone
@@ -86,6 +87,79 @@ def _deal_starting_hands(
 
     return hands
 
+def _build_demo_draw_pile(players: list[int]) -> list[Card]:
+    # This demo deck is designed for exactly 3 players.
+    if len(players) != 3:
+        raise GameError("Demo deck requires exactly 3 players.")
+
+    p1, p2, p3 = players  # join order, lobby creator is p1
+
+    # Hands everyone receives (7 each). Everyone has good cards, but p1 is set up to win.
+    hands: dict[int, list[Card]] = {
+        p1: [
+            DrawTwo(Color.RED),
+            Reverse(Color.RED),
+            Skip(Color.RED),
+            Wild(),
+            DrawFourWild(),
+            Number(Color.BLUE, 7),
+            Number(Color.BLUE, 9),
+        ],
+        p2: [
+            Wild(),
+            DrawFourWild(),
+            Reverse(Color.GREEN),
+            Skip(Color.YELLOW),
+            Number(Color.RED, 3),
+            Number(Color.BLUE, 4),
+            Number(Color.GREEN, 6),
+        ],
+        p3: [
+            Wild(),
+            DrawFourWild(),
+            DrawTwo(Color.BLUE),
+            Reverse(Color.YELLOW),
+            Skip(Color.GREEN),
+            Number(Color.RED, 8),
+            Number(Color.BLUE, 2),
+        ],
+    }
+
+    # Start card must be a Number because your code rejects non-Number start cards.
+    start_card: Card = Number(Color.RED, 5)
+
+    # First cards to be drawn later (safety net). Draws also use pop() from end,
+    # so the first card drawn after start card should be the LAST element of this list.
+    post_start_draws: list[Card] = [
+        Number(Color.GREEN, 4),
+        Wild(),
+        Number(Color.YELLOW, 1),
+        DrawFourWild(),
+        Number(Color.RED, 6),
+        Wild(),
+        Number(Color.BLUE, 8),
+        Wild(),
+    ]
+
+    # Build dealing order for pop()-from-end.
+    # Dealing loop order is: 7 rounds, each round p1 then p2 then p3.
+    dealing_pops: list[Card] = []
+    for i in range(7):
+        dealing_pops.append(hands[p1][i])
+        dealing_pops.append(hands[p2][i])
+        dealing_pops.append(hands[p3][i])
+
+    # Since pop() takes from the end, we append the reverse of dealing_pops
+    # so the first dealt card is dealing_pops[0].
+    dealing_sequence = list(reversed(dealing_pops))
+
+    # Final pile layout (front ... back):
+    # [filler/bottom] + post_start_draws + [start_card] + dealing_sequence
+    draw_pile: list[Card] = []
+    draw_pile.extend(post_start_draws)
+    draw_pile.append(start_card)
+    draw_pile.extend(dealing_sequence)
+    return draw_pile
 
 class GameState:
     def __init__(self) -> None:
@@ -181,10 +255,15 @@ class GameState:
         if len(self.state["players"]) < 2:
             raise GameError("Need at least 2 players to start.", private=True)
 
-        deck = Deck()
-        deck.add_default_cards()
-        draw_pile: list[Card] = list(deck.cards)
-        self._rng.shuffle(draw_pile)
+        demo = os.getenv("UNO_DEMO_DECK") == "1"
+
+        if demo:
+            draw_pile = _build_demo_draw_pile(self.state["players"])
+        else:
+            deck = Deck()
+            deck.add_default_cards()
+            draw_pile = list(deck.cards)
+            self._rng.shuffle(draw_pile)
 
         hands = _deal_starting_hands(self.state["players"], draw_pile)
         discard_pile: list[Card] = []
